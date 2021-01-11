@@ -53,6 +53,9 @@ def main(argv):
     if not os.path.exists('reduced'):
         os.makedirs('reduced')
     
+    if not os.path.exists('reduced\\' + str(targetColors)):
+        os.makedirs('reduced\\' + str(targetColors))
+    
     try:
         opts, args = getopt.getopt(argv,"hi:o:p:a",["ifile=","ofile=","psize="])
     except getopt.GetoptError:
@@ -76,9 +79,9 @@ def main(argv):
         elif opt in ("-a", "--append"):
             append = 'true'
     if outfile == '':
-        outfile = 'reduced\\' + ntpath.basename(os.path.splitext(filename)[0])
+        outfile = 'reduced\\' + str(targetColors) + '\\' + ntpath.basename(os.path.splitext(filename)[0])
     else:
-        outfile = 'reduced\\' + ntpath.basename(os.path.splitext(outputfile)[0])
+        outfile = 'reduced\\' + str(targetColors) + '\\' + ntpath.basename(os.path.splitext(outputfile)[0])
     if append == 'true':
         outfile = outfile + '-' + str(targetColors)
     outfile = outfile + '.png'
