@@ -14,10 +14,21 @@ import sklearn.preprocessing
 import sys, getopt
 import ntpath
 
-tic = time.perf_counter()
 
 def main(argv):
-    ### BEGIN CONFIGURATION ###
+    tic = time.perf_counter()
+    
+    # Waifu2x-caffe available from: https://github.com/lltcggie/waifu2x-caffe/releases
+    waifuPath = "C:\Programs\waifu2x-caffe\waifu2x-caffe-cui.exe"
+    waifuOptionsPre = '-i '
+    waifuOptionsMid = ' -o '
+    waifuOptionsPost = ' -p cpu -s 2.0'
+    
+    # OptiPNG available from: http://optipng.sourceforge.net/
+    optiPNGPath = "C:\Programs\optipng-0.7.7-win32\optipng.exe"
+    optiPNGOptionsPre = ''
+    optiPNGOptionsMid = ' -out '
+    optiPNGOptionsPost = ' -clobber'
     
     # Put the EXACT filename you uploaded between the quotes
     # Can be set using '-i <inputfile>' option
@@ -38,7 +49,6 @@ def main(argv):
     # you can change it to a different number if you want
     seed = 0xabad1dea
     
-    ### END CONFIGURATION ###
     inputfile = ''
     outputfile = ''
     palettesize = ''
@@ -84,6 +94,8 @@ def main(argv):
         outfile = 'reduced\\' + str(targetColors) + '\\' + ntpath.basename(os.path.splitext(outputfile)[0])
     if append == 'true':
         outfile = outfile + '-' + str(targetColors)
+    outfileWaifu = outfile + '_waifu2x.png'
+    outfileoptiPNG = outfile + '_optiPNG.png'
     outfile = outfile + '.png'
     
     if len(opts) == 0:
@@ -106,7 +118,17 @@ def main(argv):
     print(filename)
     print('')
     
-    source = Image.open(filename)
+    im = Image.open(filename)
+    
+    # Provide the target width and height of the image and resize it 50%
+    (width, height) = (im.width, im.height)
+    (width_5, height_5) = (width // 2, height // 2)
+    source = im.resize((width_5, height_5))
+    (width2, height2) = (source.width, source.height)
+    
+    print(f"Source dimensions: {width}x{height}")
+    print(f"Source halved dimensions: {width2}x{height2}")
+    
     source = source.convert("RGB")
     source = numpy.asarray(source)
     
@@ -123,7 +145,7 @@ def main(argv):
     assert(len(sourcecolors) >= targetColors)
     
     pyplot.axis("off")
-    pyplot.imshow(source, interpolation="none")
+    # pyplot.imshow(source, interpolation="none")
     
     # the actual magic 
     # basically, what this does is create n pixel clusters that work like galaxies
@@ -136,16 +158,16 @@ def main(argv):
     simplifiedSource = simplifier.cluster_centers_[simplifier.labels_]
     simplifiedSource = simplifiedSource.reshape(source.shape)
     
-    print("Result palette:")
-    print(simplifier.cluster_centers_)
-    print('')
+    #print("Result palette:")
+    #print(simplifier.cluster_centers_)
+    #print('')
     
     
     #print("\n\n➡️THIS IS A PREVIEW THUMBNAIL.⬅️\nYOUR RESULT IS IN palette-result.png IN THE FILE BROWSER ON THE LEFT.")
     #print("YOU MAY NEED TO CLICK THE REFRESH-FOLDER ICON TO SEE IT.")
     
     pyplot.axis("off")
-    pyplot.imshow(simplifiedSource.astype(numpy.uint8), interpolation="none")
+    # pyplot.imshow(simplifiedSource.astype(numpy.uint8), interpolation="none")
     
     print('Attempting to write new image:')
     print(outfile)
@@ -156,6 +178,33 @@ def main(argv):
     toc = time.perf_counter()
     print(f"Reduced the palette in {toc - tic:0.4f} seconds")
     print('')
+    tic = time.perf_counter()
+    
+    print("Attempting Waifu2x-caffe transformation with 2x scale")
+    waifuOptions = waifuOptionsPre + outfile + waifuOptionsMid + outfileWaifu + waifuOptionsPost
+    print(f"Command: {waifuPath}")
+    print(f"Options: {waifuOptions}")
+    os.system(waifuPath + " " + waifuOptions)
+    
+    toc = time.perf_counter()
+    print(f"Ran through Waifu2x-caffe in {toc - tic:0.4f} seconds")
+    print('')
+    
+    print("Attempting optiPNG processing")
+    optiPNGOptions = optiPNGOptionsPre + outfileWaifu + optiPNGOptionsMid + outfileoptiPNG + optiPNGOptionsPost
+    print(f"Command: {optiPNGPath}")
+    print(f"Options: {optiPNGOptions}")
+    os.system(optiPNGPath + " " + optiPNGOptions)
+    
+    toc = time.perf_counter()
+    print(f"Ran through OptiPNG in {toc - tic:0.4f} seconds")
+    print('')
+    
+    # Provide the target width and height of the final image
+    imFinal = Image.open(filename)
+    (widthFinal, heightFinal) = (imFinal.width, imFinal.height)
+    print(f"Final Image: {outfileoptiPNG}")
+    print(f"Source dimensions: {widthFinal}x{heightFinal}")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
