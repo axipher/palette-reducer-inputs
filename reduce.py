@@ -1,5 +1,3 @@
-
-
 # dependencies
 
 import matplotlib.pyplot as pyplot
@@ -22,7 +20,14 @@ def main(argv):
     waifuPath = "C:\Programs\waifu2x-caffe\waifu2x-caffe-cui.exe"
     waifuOptionsPre = '-i '
     waifuOptionsMid = ' -o '
-    waifuOptionsPost = ' -p cpu -s 2.0'
+    waifuOptionsPost = ' -p cpu -mode_dir --model_dir\\upconv_7_anime_style_art_rgb'
+    # -mode_dir options
+    # models\anime_style_art_rgb: 2-dimensional image model for converting all RGB
+    # models\anime_style_art: model for two-dimensional image that converts only luminance
+    # models\photo: Photos that convert all RGB, models for animated images
+    # models\upconv_7_anime_style_art_rgb: Anime_style_art_rgb A model to convert at higher speed and equal or higher image quality
+    # models\upconv_7_photo: A model that converts with higher image quality than the photo at higher speed
+    # models\ukbench: old-fashioned model for photography (only models that are enlarged are attached, noise can not be removed)
     
     # OptiPNG available from: http://optipng.sourceforge.net/
     optiPNGPath = "C:\Programs\optipng-0.7.7-win32\optipng.exe"
@@ -32,7 +37,8 @@ def main(argv):
     
     # Put the EXACT filename you uploaded between the quotes
     # Can be set using '-i <inputfile>' option
-    filename = 'photo.jpg'
+    filename = 'photo2.jpg'
+    #filename = 'slime_000195.png'
     
     # The number of colors you want in the final image
     # Can be changed using the '-p <palette-size>' option
@@ -53,10 +59,13 @@ def main(argv):
     outputfile = ''
     palettesize = ''
     append = 'false'
+    speedUp = 'false'
     
     print('')
     print('Palette Reducer with inputs!')
-    print('By 0xabad1dea and modified by Axipher')
+    print('---------------------------------------')
+    print('Orignal code by 0xabad1dea')
+    print('    Modified by Axipher and NavJack27')
     print('')
     print('')
     
@@ -67,15 +76,15 @@ def main(argv):
         os.makedirs('reduced\\' + str(targetColors))
     
     try:
-        opts, args = getopt.getopt(argv,"hi:o:p:a",["ifile=","ofile=","psize="])
+        opts, args = getopt.getopt(argv,"hi:o:p:as",["ifile=","ofile=","psize="])
     except getopt.GetoptError:
         print('reduce.py can be used like this:')
-        print('reduce.py -i <inputfile> -o <outputfile> -p <palette-size> -a')
+        print('reduce.py -i <inputfile> -o <outputfile> -p <palette-size> -a -s')
         sys.exit(2)
     for opt, arg in opts:
         if opt in ("-h", "--help"):
             print('reduce.py can be used like this:')
-            print('reduce.py -i <inputfile> -o <outputfile> -p <palette-size> -a')
+            print('reduce.py -i <inputfile> -o <outputfile> -p <palette-size> -a -s')
             sys.exit()
         elif opt in ("-i", "--ifile"):
             inputfile = arg
@@ -88,6 +97,8 @@ def main(argv):
             targetColors = int(palettesize)
         elif opt in ("-a", "--append"):
             append = 'true'
+        elif opt in ("-s", "--speed-up"):
+            speedUp = 'true'
     if outfile == '':
         outfile = 'reduced\\' + str(targetColors) + '\\' + ntpath.basename(os.path.splitext(filename)[0])
     else:
@@ -122,12 +133,17 @@ def main(argv):
     
     # Provide the target width and height of the image and resize it 50%
     (width, height) = (im.width, im.height)
-    (width_5, height_5) = (width // 2, height // 2)
-    source = im.resize((width_5, height_5))
-    (width2, height2) = (source.width, source.height)
+    print(f"Input Image: {outfile}")
+    print(f"Dimensions: {width}x{height}")
     
-    print(f"Source dimensions: {width}x{height}")
-    print(f"Source halved dimensions: {width2}x{height2}")
+    source = im
+    
+    if speedUp == 'true':
+        (width_5, height_5) = (width // 2, height // 2)
+        source = im.resize((width_5, height_5))
+        (width2, height2) = (source.width, source.height)
+        
+        print(f"Halved dimensions: {width2}x{height2}")
     
     source = source.convert("RGB")
     source = numpy.asarray(source)
@@ -182,6 +198,10 @@ def main(argv):
     
     print("Attempting Waifu2x-caffe transformation with 2x scale")
     waifuOptions = waifuOptionsPre + outfile + waifuOptionsMid + outfileWaifu + waifuOptionsPost
+    if speedUp == 'true':
+        waifuOptions = waifuOptions + ' -s 2.0'
+    if speedUp == 'false':
+        waifuOptions = waifuOptions + ' -s 1.0'
     print(f"Command: {waifuPath}")
     print(f"Options: {waifuOptions}")
     os.system(waifuPath + " " + waifuOptions)
@@ -189,9 +209,11 @@ def main(argv):
     toc = time.perf_counter()
     print(f"Ran through Waifu2x-caffe in {toc - tic:0.4f} seconds")
     print('')
+    tic = time.perf_counter()
     
     print("Attempting optiPNG processing")
-    optiPNGOptions = optiPNGOptionsPre + outfileWaifu + optiPNGOptionsMid + outfileoptiPNG + optiPNGOptionsPost
+    #optiPNGOptions = optiPNGOptionsPre + outfileWaifu + optiPNGOptionsMid + outfileoptiPNG + optiPNGOptionsPost
+    optiPNGOptions = optiPNGOptionsPre + outfileWaifu + optiPNGOptionsPost
     print(f"Command: {optiPNGPath}")
     print(f"Options: {optiPNGOptions}")
     os.system(optiPNGPath + " " + optiPNGOptions)
@@ -204,7 +226,7 @@ def main(argv):
     imFinal = Image.open(filename)
     (widthFinal, heightFinal) = (imFinal.width, imFinal.height)
     print(f"Final Image: {outfileoptiPNG}")
-    print(f"Source dimensions: {widthFinal}x{heightFinal}")
+    print(f"Dimensions: {widthFinal}x{heightFinal}")
 
 if __name__ == "__main__":
    main(sys.argv[1:])
